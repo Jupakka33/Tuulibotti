@@ -1,47 +1,37 @@
 import requests
-import xml.etree.ElementTree as ET
 import os
 
-FMI_API_URL = "https://opendata.fmi.fi/wfs"
-FMI_STATION = os.getenv("FMI_STATION")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-def get_wind_data():
-    params = {
-        "service": "WFS",
-        "version": "2.0.0",
-        "request": "getFeature",
-        "storedquery_id": "fmi::observations::weather::multipointcoverage",
-        "fmisid": FMI_STATION
-    }
+FMI_URL = (
+    "https://opendata.fmi.fi/wfs?"
+    "service=WFS&version=2.0.0&request=getFeature&"
+    "storedquery_id=fmi::observations::weather::multipointcoverage&"
+    "fmisid=101004&parameters=ws_10min"
+)
 
-    r = requests.get(FMI_API_URL, params=params)
-    root = ET.fromstring(r.content)
+TUULIRAJA = 8  # m/s
 
-    wind_speed = None
-    wind_dir = None
+def hae_tuuli():
+    data = requests.get(FMI_URL).json()
+    # Puretaan FMI:n multipointcoverage-rakenne
+    ws_values = data["coverage"]["ranges"]["ws_10min"]["value"]
+    # Otetaan uusin mittaus
+    return ws_values[-1]
 
-    for elem in root.iter():
-        if "WindSpeedMS" in elem.tag:
-            wind_speed = float(elem.text)
-        if "WindDirection" in elem.tag:
-            wind_dir = float(elem.text)
-
-    return wind_speed, wind_dir
-
-def send_telegram_message(text):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": text})
+def laheta_viesti(teksti):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHAT_ID, "text": teksti})
 
 def main():
-    speed, direction = get_wind_data()
-
-    if speed is None:
-        return
-
-    if speed > 10:
-        send_telegram_message(f"Tuuli {speed} m/s, suunta {direction}°")
+    tuuli = hae_tuuli()
+    if tuuli > TUULIRAJA:
+        laheta_viesti(f"Vihreäsaaren tuuli {tuuli} m/s — ylittää rajan {TUULIRAJA} m/s!")
+    else:
+        print(f"Tuuli {tuuli} m/s — ei ylitä rajaa.")
 
 if __name__ == "__main__":
     main()
+
+
