@@ -22,9 +22,11 @@ def get_wind_data():
 
     r = requests.get(FMI_API_URL, params=params)
 
-    # DEBUG: tulostetaan FMI:n XML-vastaus
-    print("DEBUG: FMI raw XML (first 2000 chars):")
-    print(r.text[:2000])
+    # ⭐ Tallennetaan XML tiedostoksi
+    with open("fmi_raw.xml", "w", encoding="utf-8") as f:
+        f.write(r.text)
+
+    print("DEBUG: FMI XML tallennettu tiedostoon fmi_raw.xml")
 
     root = ET.fromstring(r.content)
 
@@ -38,8 +40,6 @@ def get_wind_data():
         if "datablock" in tag and elem.text:
             values = elem.text.strip().split()
 
-            # DataBlock sisältää kaikki parametrit yhtenä rivinä
-            # Oletus: viimeiset kaksi arvoa = tuulen nopeus ja suunta
             if len(values) >= 2:
                 ws_values = [values[-2]]
                 wd_values = [values[-1]]
@@ -63,4 +63,17 @@ def main():
 
     if speed is None:
         print("FMI ei palauttanut tuulitietoja.")
-        send_telegram_message
+        send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
+        return
+
+    if speed > TUULIRAJA:
+        print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
+        send_telegram_message(
+            f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
+        )
+    else:
+        print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
+
+
+if __name__ == "__main__":
+    main()
