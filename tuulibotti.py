@@ -64,3 +64,5 @@ def main():
     else:
         print(f"Tuuli {speed} m/s – ei ylitä rajaa.")
 
+if __name__ == "__main__":
+    main()
