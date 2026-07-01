@@ -10,7 +10,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 MIN_SPEED = 5.0
 MIN_DIR = 225
-MAX_DIR = 270
+MAX_DIR = 315
 
 ALERT_FILE = "last_alert.txt"
 
