@@ -1,13 +1,16 @@
 import requests
 import xml.etree.ElementTree as ET
 import os
+from datetime import datetime
 
 FMI_API_URL = "https://opendata.fmi.fi/wfs"
 FMI_STATION = os.getenv("FMI_STATION")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-TUULIRAJA = 10  # m/s
+MIN_SPEED = 7.0
+MIN_DIR = 225
+MAX_DIR = 270
 
 
 def get_wind_data():
@@ -59,6 +62,14 @@ def send_telegram_message(text):
 
 
 def main():
+    # Ajoaika: vain klo 08–20
+    now = datetime.utcnow()
+    hour = now.hour + 3  # Suomen aika (UTC+3 kesällä)
+
+    if hour < 8 or hour >= 20:
+        print(f"Kello {hour}:00 — ei ajeta (vain 08–20).")
+        return
+
     speed, direction = get_wind_data()
 
     if speed is None:
@@ -66,13 +77,22 @@ def main():
         send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
         return
 
-    if speed > TUULIRAJA:
-        print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
-        send_telegram_message(
-            f"Helsinki Kumpula: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
+    print(f"Tuuli {speed} m/s, suunta {direction}°")
+
+    # Ehdot:
+    # 1) Nopeus vähintään 7 m/s
+    # 2) Suunta 225–270° (länsi)
+    if speed >= MIN_SPEED and MIN_DIR <= direction <= MAX_DIR:
+        msg = (
+            f"Tuulihälytys!\n"
+            f"Nopeus: {speed} m/s\n"
+            f"Suunta: {direction}° (länsi)\n"
+            f"Ehdot täyttyivät."
         )
+        print(msg)
+        send_telegram_message(msg)
     else:
-        print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
+        print("Ehdot eivät täyttyneet.")
 
 
 if __name__ == "__main__":
