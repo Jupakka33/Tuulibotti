@@ -3,11 +3,11 @@ import xml.etree.ElementTree as ET
 import os
 
 FMI_API_URL = "https://opendata.fmi.fi/wfs"
-FMI_STATION = os.getenv("FMI_STATION")  # esim. 101004
+FMI_STATION = os.getenv("FMI_STATION")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-TUULIRAJA = 10  # m/s – muuta halutuksi
+TUULIRAJA = 10  # m/s
 
 
 def get_wind_data():
@@ -22,18 +22,19 @@ def get_wind_data():
 
     r = requests.get(FMI_API_URL, params=params)
 
-    # ⭐ Tallennetaan XML tiedostoksi
-    with open("fmi_raw.xml", "w", encoding="utf-8") as f:
+    # ⭐ Tallennetaan XML varmasti oikeaan hakemistoon
+    output_path = os.path.join(os.getcwd(), "fmi_raw.xml")
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(r.text)
 
-    print("DEBUG: FMI XML tallennettu tiedostoon fmi_raw.xml")
+    print(f"DEBUG: FMI XML tallennettu: {output_path}")
 
     root = ET.fromstring(r.content)
 
     ws_values = None
     wd_values = None
 
-    # Etsi DataBlock, jossa arvot oikeasti ovat
+    # Etsi DataBlock (FMI:n nykyinen formaatti)
     for elem in root.iter():
         tag = elem.tag.lower()
 
