@@ -1,7 +1,7 @@
 import requests
 import xml.etree.ElementTree as ET
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 FMI_API_URL = "https://opendata.fmi.fi/wfs"
 FMI_STATION = os.getenv("FMI_STATION")
@@ -11,6 +11,26 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 MIN_SPEED = 7.0
 MIN_DIR = 225
 MAX_DIR = 270
+
+ALERT_FILE = "last_alert.txt"
+
+
+def get_last_alert_time():
+    if not os.path.exists(ALERT_FILE):
+        return None
+
+    try:
+        with open(ALERT_FILE, "r") as f:
+            ts = f.read().strip()
+            return datetime.fromisoformat(ts)
+    except:
+        return None
+
+
+def set_last_alert_time():
+    now = datetime.utcnow()
+    with open(ALERT_FILE, "w") as f:
+        f.write(now.isoformat())
 
 
 def get_wind_data():
@@ -25,16 +45,12 @@ def get_wind_data():
 
     r = requests.get(FMI_API_URL, params=params)
 
-    # Tallennetaan XML tiedostoksi
-    output_path = os.path.join(os.getcwd(), "fmi_raw.xml")
-    with open(output_path, "w", encoding="utf-8") as f:
+    # Tallennetaan XML
+    with open("fmi_raw.xml", "w", encoding="utf-8") as f:
         f.write(r.text)
-
-    print(f"DEBUG: FMI XML tallennettu: {output_path}")
 
     root = ET.fromstring(r.content)
 
-    # Etsi doubleOrNilReasonTupleList
     tuples = None
     for elem in root.iter():
         if elem.tag.endswith("doubleOrNilReasonTupleList"):
@@ -44,16 +60,13 @@ def get_wind_data():
     if not tuples:
         return None, None
 
-    # Muunna arvot pareiksi (nopeus, suunta)
     pairs = []
     for i in range(0, len(tuples), 2):
         ws = float(tuples[i])
         wd = float(tuples[i + 1])
         pairs.append((ws, wd))
 
-    latest_ws, latest_wd = pairs[-1]  # viimeisin mittaus
-
-    return latest_ws, latest_wd
+    return pairs[-1]  # viimeisin mittaus
 
 
 def send_telegram_message(text):
@@ -62,9 +75,9 @@ def send_telegram_message(text):
 
 
 def main():
-    # Ajoaika: vain klo 08–20
-    now = datetime.utcnow()
-    hour = now.hour + 3  # Suomen aika (UTC+3 kesällä)
+    # Ajo vain klo 08–20 Suomen aikaa (UTC+3)
+    now = datetime.utcnow() + timedelta(hours=3)
+    hour = now.hour
 
     if hour < 8 or hour >= 20:
         print(f"Kello {hour}:00 — ei ajeta (vain 08–20).")
@@ -74,14 +87,18 @@ def main():
 
     if speed is None:
         print("FMI ei palauttanut tuulitietoja.")
-        send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
         return
 
     print(f"Tuuli {speed} m/s, suunta {direction}°")
 
-    # Ehdot:
-    # 1) Nopeus vähintään 7 m/s
-    # 2) Suunta 225–270° (länsi)
+    # Tarkista 3 h hälytysrajoitus
+    last_alert = get_last_alert_time()
+    if last_alert:
+        if datetime.utcnow() < last_alert + timedelta(hours=3):
+            print("Hälytys lähetetty alle 3 h sitten — ei uutta hälytystä.")
+            return
+
+    # Ehdot: nopeus + suunta
     if speed >= MIN_SPEED and MIN_DIR <= direction <= MAX_DIR:
         msg = (
             f"Tuulihälytys!\n"
@@ -91,6 +108,7 @@ def main():
         )
         print(msg)
         send_telegram_message(msg)
+        set_last_alert_time()
     else:
         print("Ehdot eivät täyttyneet.")
 
