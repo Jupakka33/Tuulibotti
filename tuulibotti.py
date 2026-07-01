@@ -9,6 +9,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 TUULIRAJA = 10  # m/s – muuta halutuksi
 
+
 def get_wind_data():
     params = {
         "service": "WFS",
@@ -54,15 +55,18 @@ def main():
     speed, direction = get_wind_data()
 
     if speed is None:
+        print("FMI ei palauttanut tuulitietoja.")
         send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
         return
 
     if speed > TUULIRAJA:
+        print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
         send_telegram_message(
             f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
         )
     else:
-        print(f"Tuuli {speed} m/s – ei ylitä rajaa.")
+        print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
+
 
 if __name__ == "__main__":
     main()
