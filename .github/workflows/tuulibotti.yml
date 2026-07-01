@@ -1,9 +1,9 @@
-name: Tuulibotti
+name: run-bot
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"   # Ajaa 10 min välein
+    - cron: "*/30 * * * *"
 
 jobs:
   run-bot:
@@ -27,3 +27,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FMI_STATION: ${{ secrets.FMI_STATION }}
         run: python tuulibotti.py
+
+      - name: Upload FMI XML
+        uses: actions/upload-artifact@v3
+        with:
+          name: fmi_raw
+          path: fmi_raw.xml
