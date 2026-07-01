@@ -62,5 +62,5 @@ def main():
             f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
         )
     else:
-        pprint(f"Tuuli {speed} m/s – ei ylitä rajaa.")
+        print(f"Tuuli {speed} m/s – ei ylitä rajaa.")
 
