@@ -17,4 +17,61 @@ def get_wind_data():
         "request": "getFeature",
         "storedquery_id": "fmi::observations::weather::multipointcoverage",
         "fmisid": FMI_STATION,
-        "parameters": "ws
+        "parameters": "ws_10min,wd_10min"
+    }
+
+    r = requests.get(FMI_API_URL, params=params)
+
+    # DEBUG: tulostetaan FMI:n XML-vastaus
+    print("DEBUG: FMI raw XML (first 2000 chars):")
+    print(r.text[:2000])
+
+    root = ET.fromstring(r.content)
+
+    ws_values = None
+    wd_values = None
+
+    # Etsi multipointcoverage-arvot
+    for elem in root.iter():
+        tag = elem.tag.lower()
+
+        if "ws_10min" in tag:
+            ws_values = elem.text.split()
+
+        if "wd_10min" in tag:
+            wd_values = elem.text.split()
+
+    if not ws_values:
+        return None, None
+
+    # Uusin mittaus on listan viimeinen
+    latest_ws = float(ws_values[-1])
+    latest_wd = float(wd_values[-1]) if wd_values else None
+
+    return latest_ws, latest_wd
+
+
+def send_telegram_message(text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": text})
+
+
+def main():
+    speed, direction = get_wind_data()
+
+    if speed is None:
+        print("FMI ei palauttanut tuulitietoja.")
+        send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
+        return
+
+    if speed > TUULIRAJA:
+        print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
+        send_telegram_message(
+            f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
+        )
+    else:
+        print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
+
+
+if __name__ == "__main__":
+    main()
