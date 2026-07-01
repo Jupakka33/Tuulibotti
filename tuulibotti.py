@@ -22,7 +22,7 @@ def get_wind_data():
 
     r = requests.get(FMI_API_URL, params=params)
 
-    # ⭐ Tallennetaan XML varmasti oikeaan hakemistoon
+    # Tallennetaan XML tiedostoksi
     output_path = os.path.join(os.getcwd(), "fmi_raw.xml")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(r.text)
@@ -31,25 +31,24 @@ def get_wind_data():
 
     root = ET.fromstring(r.content)
 
-    ws_values = None
-    wd_values = None
-
-    # Etsi DataBlock (FMI:n nykyinen formaatti)
+    # Etsi doubleOrNilReasonTupleList
+    tuples = None
     for elem in root.iter():
-        tag = elem.tag.lower()
+        if elem.tag.endswith("doubleOrNilReasonTupleList"):
+            tuples = elem.text.strip().split()
+            break
 
-        if "datablock" in tag and elem.text:
-            values = elem.text.strip().split()
-
-            if len(values) >= 2:
-                ws_values = [values[-2]]
-                wd_values = [values[-1]]
-
-    if not ws_values:
+    if not tuples:
         return None, None
 
-    latest_ws = float(ws_values[-1])
-    latest_wd = float(wd_values[-1]) if wd_values else None
+    # Muunna arvot pareiksi (nopeus, suunta)
+    pairs = []
+    for i in range(0, len(tuples), 2):
+        ws = float(tuples[i])
+        wd = float(tuples[i + 1])
+        pairs.append((ws, wd))
+
+    latest_ws, latest_wd = pairs[-1]  # viimeisin mittaus
 
     return latest_ws, latest_wd
 
@@ -70,7 +69,7 @@ def main():
     if speed > TUULIRAJA:
         print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
         send_telegram_message(
-            f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
+            f"Helsinki Kumpula: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
         )
     else:
         print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
