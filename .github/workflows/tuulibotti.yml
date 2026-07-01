@@ -29,4 +29,7 @@ jobs:
         run: python tuulibotti.py
 
       - name: Upload FMI XML
-        uses: actions/upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmi_raw
+          path: ./fmi_raw.xml
