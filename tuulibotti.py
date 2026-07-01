@@ -31,20 +31,22 @@ def get_wind_data():
     ws_values = None
     wd_values = None
 
-    # Etsi multipointcoverage-arvot
+    # Etsi DataBlock, jossa arvot oikeasti ovat
     for elem in root.iter():
         tag = elem.tag.lower()
 
-        if "ws_10min" in tag:
-            ws_values = elem.text.split()
+        if "datablock" in tag and elem.text:
+            values = elem.text.strip().split()
 
-        if "wd_10min" in tag:
-            wd_values = elem.text.split()
+            # DataBlock sisältää kaikki parametrit yhtenä rivinä
+            # Oletus: viimeiset kaksi arvoa = tuulen nopeus ja suunta
+            if len(values) >= 2:
+                ws_values = [values[-2]]
+                wd_values = [values[-1]]
 
     if not ws_values:
         return None, None
 
-    # Uusin mittaus on listan viimeinen
     latest_ws = float(ws_values[-1])
     latest_wd = float(wd_values[-1]) if wd_values else None
 
@@ -61,17 +63,4 @@ def main():
 
     if speed is None:
         print("FMI ei palauttanut tuulitietoja.")
-        send_telegram_message("Tuulitietojen lukeminen FMI:ltä epäonnistui.")
-        return
-
-    if speed > TUULIRAJA:
-        print(f"Tuuli {speed} m/s – ylittää rajan {TUULIRAJA} m/s.")
-        send_telegram_message(
-            f"Oulu Vihreäsaari: tuuli {speed} m/s, suunta {direction}° (raja {TUULIRAJA} m/s)"
-        )
-    else:
-        print(f"Tuuli {speed} m/s – ei ylitä rajaa {TUULIRAJA} m/s.")
-
-
-if __name__ == "__main__":
-    main()
+        send_telegram_message
