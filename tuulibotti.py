@@ -101,10 +101,10 @@ def main():
     # Ehdot: nopeus + suunta
     if speed >= MIN_SPEED and MIN_DIR <= direction <= MAX_DIR:
         msg = (
-            f"Tuulihälytys!\n"
+            f"Keli päällä!\n"
             f"Nopeus: {speed} m/s\n"
             f"Suunta: {direction}° (länsi)\n"
-            f"Ehdot täyttyivät."
+            f"."
         )
         print(msg)
         send_telegram_message(msg)
