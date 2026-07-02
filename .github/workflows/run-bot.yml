@@ -33,3 +33,5 @@ jobs:
         with:
           name: fmi_raw
           path: ./fmi_raw.xml
+          # cron re-register
+
